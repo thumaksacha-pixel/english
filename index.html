@@ -99,15 +99,21 @@ function bub(c,t){const d=document.createElement("div");d.className="b "+c;d.tex
 async function go(text,silent){
  if(busy)return;busy=true;if(!silent)bub("me",text);H.push({role:"user",content:text});const w=bub("","…");
  try{
-  const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent?key="+encodeURIComponent(gk()),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({systemInstruction:{parts:[{text:sysP()}]},contents:H.map(h=>({role:h.role==="assistant"?"model":"user",parts:[{text:h.content}]})),generationConfig:{responseMimeType:"application/json",maxOutputTokens:600}})});
-  const d=await r.json();if(!r.ok)throw new Error(d.error?.message||r.status);
+  let r,d;
+  for(let t=0;t<4;t++){
+   r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent?key="+encodeURIComponent(gk()),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({systemInstruction:{parts:[{text:sysP()}]},contents:H.map(h=>({role:h.role==="assistant"?"model":"user",parts:[{text:h.content}]})),generationConfig:{responseMimeType:"application/json",maxOutputTokens:600}})});
+   d=await r.json();
+   if(r.ok||![429,500,503].includes(r.status))break;
+   w.textContent="ИИ перегружен, повторяю ("+(t+1)+"/3)…";await new Promise(z=>setTimeout(z,2500*(t+1)));
+  }
+  if(!r.ok)throw new Error(d.error?.message||r.status);
   const raw=(d.candidates?.[0]?.content?.parts||[]).map(x=>x.text||"").join("").replace(/```json|```/g,"").trim();
   let j;try{j=JSON.parse(raw)}catch(e){j={reply:raw}}
   H.push({role:"assistant",content:raw});w.remove();
   if(!silent)j.fix?bub("fix","✏️ "+j.fix+(j.why?"\n"+j.why:"")):bub("good","✅ Отлично!");
   const b=bub("",j.reply);if(j.ru){const p=document.createElement("div");p.className="hid";p.textContent=j.ru;b.appendChild(p);b.onclick=()=>p.style.display=p.style.display==="block"?"none":"block"}
   sayT(j.reply);
- }catch(e){w.textContent="Ошибка: "+(navigator.onLine?e.message:"нет интернета")+(/key/i.test(e.message)?" — проверьте ключ (🔑 на стартовом экране)":"")}
+ }catch(e){H.pop();w.textContent="Ошибка: "+(navigator.onLine?e.message:"нет интернета")+(/key/i.test(e.message)?" — проверьте ключ (🔑 на стартовом экране)":"")}
  busy=false}
 function sayT(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.95;speechSynthesis.speak(u)}catch(e){}}
 function aiSend(){const v=$("tx").value.trim();if(v){$("tx").value="";go(v)}}
