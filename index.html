@@ -83,7 +83,7 @@ const M=[
 ["Запчасти и доклад","Разговор со старшим механиком",[
 ["Chief, we have a problem with the alternator.","Чиф, у нас проблема с генератором."],["I need to order spare parts.","Мне нужно заказать запчасти."],["Please send me the part number and the quotation.","Пришлите номер детали и коммерческое предложение."],["Delivery to the next port, please.","Доставка в следующий порт, пожалуйста."],["The repair will take about two hours.","Ремонт займёт около двух часов."],["It was caused by a loose connection.","Причина: ослабленное соединение."],["I'll report back when the job is done.","Доложу, когда работа будет закончена."]]]];
 
-const MODEL="gemini-2.5-flash"; // при ошибке модели замените на актуальную flash-модель из aistudio.google.com
+const MODEL="gemini-3.8-flash"; // при ошибке модели замените на актуальную flash-модель из aistudio.google.com
 const SC=[["Свободный разговор","Знакомство","Кафе и магазин","Врач","Аэропорт и виза","Поиск жилья"],["Свободный разговор о работе","Блэкаут: разговор со старшим механиком","Проверка PSC","Ex-зона и Permit to Work","Заказ запчастей","Первый день на судне","Мегомметр и ремонт"]];
 let mode=0,rec=null,busy=false,H=[],L=[],inCat=false;
 const $=id=>document.getElementById(id);
