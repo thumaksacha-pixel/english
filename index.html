@@ -22,10 +22,12 @@ select,input{min-width:0;padding:11px;border-radius:10px;border:1px solid var(--
 .b{max-width:90%;padding:12px 14px;border-radius:16px;background:var(--card);line-height:1.4;white-space:pre-wrap}
 .me{align-self:flex-end;background:var(--ac);color:#fff}
 .fix{background:#fff4e0;color:#1b2430;font-size:15px}.good{background:#e8f5e9;color:#1b2430;font-size:15px}
+.big.sm{width:52px;height:52px;font-size:17px;font-weight:700}
+.tip{background:#e3f0ff;color:#1b2430;font-size:16px}
 .hid{display:none;color:var(--mut);font-size:15px;margin-top:6px}
 .bar{position:sticky;bottom:0;background:var(--card);padding:10px 12px 14px;display:flex;gap:10px;align-items:center}
 .bar input{flex:1;font-size:16px}
-.big{width:72px;height:72px;border-radius:50%;border:0;background:var(--ac);color:#fff;font-size:32px;flex:none}
+.big{width:62px;height:62px;border-radius:50%;border:0;background:var(--ac);color:#fff;font-size:32px;flex:none}
 .big.rec,.row button.rec{background:var(--r);color:#fff;animation:p 1s infinite}@keyframes p{50%{opacity:.7}}
 .snd{padding:12px 15px;border:0;border-radius:12px;background:var(--ac);color:#fff;font-size:18px}
 .cat{padding:18px;border:0;border-radius:14px;background:var(--card);color:var(--tx);font-size:18px;text-align:left}
@@ -54,7 +56,7 @@ select,input{min-width:0;padding:11px;border-radius:10px;border:1px solid var(--
 <div class="s" id="s1">
  <div class="top"><button onclick="scr(0)">←</button><select id="sc" onchange="newChat()"></select><select id="lv" onchange="newChat()" style="flex:.5"><option>A2</option><option selected>B1</option><option>B2</option></select><button onclick="lib()">📚</button></div>
  <div id="chat"></div>
- <div class="bar"><button class="big" id="am" onclick="aiMic()">🎤</button><input id="tx" placeholder="или напишите" onkeydown="if(event.key==='Enter')aiSend()"><button class="snd" onclick="aiSend()">➤</button></div>
+ <div class="bar"><button class="big" id="am" onclick="aiMic()">🎤</button><button class="big sm" id="ar" onclick="aiMic('ru-RU')">RU</button><input id="tx" placeholder="пишите по-русски или English" onkeydown="if(event.key==='Enter')aiSend()"><button class="snd" onclick="aiSend()">➤</button></div>
 </div>
 
 <div class="s" id="s2"><div class="top"><button onclick="libBack()">←</button><b style="align-self:center" id="lt">Фразы</b></div><div class="list" id="v"></div></div>
@@ -92,9 +94,9 @@ function scr(n){document.querySelectorAll(".s").forEach((e,i)=>e.classList.toggl
 function sk(){const v=$("kk").value.trim();if(v){try{localStorage.setItem("k",v)}catch(e){}$("kk").value="";scr(0)}}
 function start(m){mode=m;if(!gk()){scr(3);return}
  $("sc").innerHTML=SC[m].map((s,i)=>`<option value="${i}">${s}</option>`).join("");scr(1);newChat()}
-function newChat(){H=[];$("chat").innerHTML="";go("(Start with a short greeting and your first question for the scenario.)",true)}
+function newChat(){H=[];$("chat").innerHTML="";bub("good","💡 Не знаете, как сказать? Нажмите RU и скажите по-русски (или напишите по-русски) — подскажу, как это сказать по-английски.");go("(Start with a short greeting and your first question for the scenario.)",true)}
 function sysP(){const sc=SC[mode][$("sc").value||0],lv=$("lv").value;
- return `You are a friendly, patient English tutor and role-play partner. Learner: Russian speaker, level ${lv}`+(mode?", a ship's electrical engineer (ETO) on tankers. Use real shipboard English (SOLAS, MARPOL, ISM, IEC, SMCP, switchboard, megger, AVR, Ex-equipment, PSC). Play the other party (chief engineer, captain, PSC inspector, supplier) as needed.":", who needs everyday conversation.")+` Scenario: ${sc}. Reply in 1-3 short sentences at ${lv} level and end with one question. Return ONLY JSON: {"reply":"English reply","fix":"corrected version of the learner's last sentence or empty string","why":"short explanation of the mistake in Russian or empty","ru":"Russian translation of your reply"}`}
+ return `You are a friendly, patient English tutor and role-play partner. Learner: Russian speaker, level ${lv}`+(mode?", a ship's electrical engineer (ETO) on tankers. Use real shipboard English (SOLAS, MARPOL, ISM, IEC, SMCP, switchboard, megger, AVR, Ex-equipment, PSC). Play the other party (chief engineer, captain, PSC inspector, supplier) as needed.":", who needs everyday conversation.")+` Scenario: ${sc}. Reply in 1-3 short sentences at ${lv} level and end with one question. The learner may write or speak Russian when they do not know how to say something in English. Then: put the natural English way to say it in "how" (one best phrase, optionally one alternative after " / "), a short Russian explanation (max 2 sentences) in "note", leave "fix" empty, and in "reply" keep the conversation going in English, inviting the learner to try the phrase. If the learner asks in Russian about a word or grammar, answer briefly in "note" and give an example phrase in "how". If the learner writes in English, leave "how" and "note" empty. Return ONLY JSON: {"reply":"English reply","fix":"corrected version of the learner's last sentence or empty string","why":"short explanation of the mistake in Russian or empty","ru":"Russian translation of your reply","how":"English phrase to say, or empty","note":"Russian tip, or empty"}`}
 function bub(c,t){const d=document.createElement("div");d.className="b "+c;d.textContent=t;$("chat").appendChild(d);window.scrollTo(0,document.body.scrollHeight);return d}
 let MS=null;
 async function models(){
@@ -124,18 +126,18 @@ async function go(text,silent){
   const raw=(d.candidates?.[0]?.content?.parts||[]).map(x=>x.text||"").join("").replace(/```json|```/g,"").trim();
   let j;try{j=JSON.parse(raw)}catch(e){j={reply:raw}}
   H.push({role:"assistant",content:raw});w.remove();
-  if(!silent)j.fix?bub("fix","✏️ "+j.fix+(j.why?"\n"+j.why:"")):bub("good","✅ Отлично!");
+  if(!silent){if(j.how){const t=bub("tip","💡 Скажите так:\n"+j.how+(j.note?"\n\n"+j.note:"")+"\n(нажмите — послушать)");t.onclick=()=>sayT(j.how.split(" / ")[0])}else j.fix?bub("fix","✏️ "+j.fix+(j.why?"\n"+j.why:"")):bub("good","✅ Отлично!")}
   const b=bub("",j.reply);if(j.ru){const p=document.createElement("div");p.className="hid";p.textContent=j.ru;b.appendChild(p);b.onclick=()=>p.style.display=p.style.display==="block"?"none":"block"}
   sayT(j.reply);
  }catch(e){H.pop();w.textContent="Ошибка: "+(navigator.onLine?e.message:"нет интернета")+(/key/i.test(e.message)?" — проверьте ключ (🔑 на стартовом экране)":/demand|overload|unavailable|quota/i.test(e.message)?"\nСерверы Google заняты. Попробуйте через пару минут. Библиотека фраз 📚 работает без ИИ.":"")}
  busy=false}
 function sayT(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.95;speechSynthesis.speak(u)}catch(e){}}
 function aiSend(){const v=$("tx").value.trim();if(v){$("tx").value="";go(v)}}
-function aiMic(){
+function aiMic(l){
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
  if(!SR){bub("","Распознавание речи не поддерживается. Откройте в Chrome или пишите текстом.");return}
  if(rec){rec.stop();return}
- speechSynthesis.cancel();rec=new SR();rec.lang="en-US";rec.interimResults=false;const b=$("am");b.classList.add("rec");
+ speechSynthesis.cancel();rec=new SR();rec.lang=l||"en-US";rec.interimResults=false;const b=$(l?"ar":"am");b.classList.add("rec");
  rec.onresult=e=>go(e.results[0][0].transcript);
  rec.onerror=e=>{if(e.error==="not-allowed")bub("","Разрешите микрофон в настройках Chrome.")};
  rec.onend=()=>{rec=null;b.classList.remove("rec")};rec.start()}
