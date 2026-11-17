@@ -96,15 +96,29 @@ function newChat(){H=[];$("chat").innerHTML="";go("(Start with a short greeting 
 function sysP(){const sc=SC[mode][$("sc").value||0],lv=$("lv").value;
  return `You are a friendly, patient English tutor and role-play partner. Learner: Russian speaker, level ${lv}`+(mode?", a ship's electrical engineer (ETO) on tankers. Use real shipboard English (SOLAS, MARPOL, ISM, IEC, SMCP, switchboard, megger, AVR, Ex-equipment, PSC). Play the other party (chief engineer, captain, PSC inspector, supplier) as needed.":", who needs everyday conversation.")+` Scenario: ${sc}. Reply in 1-3 short sentences at ${lv} level and end with one question. Return ONLY JSON: {"reply":"English reply","fix":"corrected version of the learner's last sentence or empty string","why":"short explanation of the mistake in Russian or empty","ru":"Russian translation of your reply"}`}
 function bub(c,t){const d=document.createElement("div");d.className="b "+c;d.textContent=t;$("chat").appendChild(d);window.scrollTo(0,document.body.scrollHeight);return d}
+let MS=null;
+async function models(){
+ if(MS)return MS;let l=[MODEL];
+ try{const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=100&key="+encodeURIComponent(gk()));const d=await r.json();
+  const x=(d.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")&&/flash/i.test(m.name)&&!/image|tts|live|audio|embed|thinking|robot/i.test(m.name)).map(m=>m.name.replace("models/",""));
+  l=[MODEL,...x.filter(n=>n!==MODEL)].slice(0,5)}catch(e){}
+ MS=l;return l}
 async function go(text,silent){
  if(busy)return;busy=true;if(!silent)bub("me",text);H.push({role:"user",content:text});const w=bub("","…");
  try{
-  let r,d;
-  for(let t=0;t<4;t++){
-   r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent?key="+encodeURIComponent(gk()),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({systemInstruction:{parts:[{text:sysP()}]},contents:H.map(h=>({role:h.role==="assistant"?"model":"user",parts:[{text:h.content}]})),generationConfig:{responseMimeType:"application/json",maxOutputTokens:600}})});
-   d=await r.json();
-   if(r.ok||![429,500,503].includes(r.status))break;
-   w.textContent="ИИ перегружен, повторяю ("+(t+1)+"/3)…";await new Promise(z=>setTimeout(z,2500*(t+1)));
+  const body=JSON.stringify({systemInstruction:{parts:[{text:sysP()}]},contents:H.map(h=>({role:h.role==="assistant"?"model":"user",parts:[{text:h.content}]})),generationConfig:{responseMimeType:"application/json",maxOutputTokens:600}});
+  const badKey=()=>r.status===400&&/key/i.test(d.error?.message||"");
+  let r,d;const ms=await models();
+  for(let t=0;t<2;t++){
+   for(const mn of ms){
+    r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+mn+":generateContent?key="+encodeURIComponent(gk()),{method:"POST",headers:{"content-type":"application/json"},body});
+    d=await r.json();
+    if(r.ok){MS=[mn,...MS.filter(x=>x!==mn)];break}
+    if(badKey())break;
+    w.textContent="ИИ занят, пробую другую модель…";
+   }
+   if(r.ok||badKey())break;
+   await new Promise(z=>setTimeout(z,3000));
   }
   if(!r.ok)throw new Error(d.error?.message||r.status);
   const raw=(d.candidates?.[0]?.content?.parts||[]).map(x=>x.text||"").join("").replace(/```json|```/g,"").trim();
@@ -113,7 +127,7 @@ async function go(text,silent){
   if(!silent)j.fix?bub("fix","✏️ "+j.fix+(j.why?"\n"+j.why:"")):bub("good","✅ Отлично!");
   const b=bub("",j.reply);if(j.ru){const p=document.createElement("div");p.className="hid";p.textContent=j.ru;b.appendChild(p);b.onclick=()=>p.style.display=p.style.display==="block"?"none":"block"}
   sayT(j.reply);
- }catch(e){H.pop();w.textContent="Ошибка: "+(navigator.onLine?e.message:"нет интернета")+(/key/i.test(e.message)?" — проверьте ключ (🔑 на стартовом экране)":"")}
+ }catch(e){H.pop();w.textContent="Ошибка: "+(navigator.onLine?e.message:"нет интернета")+(/key/i.test(e.message)?" — проверьте ключ (🔑 на стартовом экране)":/demand|overload|unavailable|quota/i.test(e.message)?"\nСерверы Google заняты. Попробуйте через пару минут. Библиотека фраз 📚 работает без ИИ.":"")}
  busy=false}
 function sayT(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.95;speechSynthesis.speak(u)}catch(e){}}
 function aiSend(){const v=$("tx").value.trim();if(v){$("tx").value="";go(v)}}
